@@ -100,7 +100,210 @@ Untuk Switch3, silakan tambah kode berikut
     default-lease-time 720;
     max-lease-time 7200;
 ```
+# Jarkom-Modul-3-E10-2021
 
+## Soal 8
+Loguetown digunakan sebagai client Proxy agar transaksi jual beli dapat terjamin keamanannya, juga untuk mencegah kebocoran data transaksi. Pada Loguetown, proxy harus bisa diakses dengan nama jualbelikapal.yyy.com dengan port yang digunakan adalah 5000
+
+Pada squid.conf di water7, tambahkan
+```
+http_port 5000
+visible_hostname jualbelikapal.e10.com
+```
+Kemudian Nyalakan Squid
+
+### Testing 
+Lakukan instalasi lynx dan tambahkan perintah sebagai berikut
+```
+apt-get update
+apt-get install -y  lynx
+export http_proxy=http://10.34.2.3:5000
+```
+Coba perintah `lynx http://its.ac.id`
+
+![image](https://user-images.githubusercontent.com/77628684/141643103-4bd0b977-284b-4f2e-b6e7-cf8c8ce1110c.png)
+
+Kemudian ditambahkan perintah pada /etc/squid/squid.conf agar dapat mengakses http
+
+```
+http_access allow all
+```
+
+![image](https://user-images.githubusercontent.com/77628684/141643120-3aa62ff4-efb4-4dde-8428-3734d8da6e9a.png)
+
+
+## Soal 9
+agar transaksi jual beli lebih aman dan pengguna website ada dua orang, proxy dipasang autentikasi user proxy dengan enkripsi MD5 dengan dua username, yaitu luffybelikapalyyy dengan password luffy_yyy dan zorobelikapalyyy dengan password zoro_yyy
+
+Pada water7, tambahkan perintah berikut
+
+```
+apt-get update
+apt-get install -y apache2-utils 
+
+touch /etc/squid/passwd
+
+htpasswd -m /etc/squid/passwd luffybelikapale10
+luffy_e10
+luffy_e10
+
+htpasswd -m /etc/squid/passwd zorobelikapale10
+zoro_e10
+zoro_e10
+```
+
+Kemudian tambahkan config squidnya
+
+```
+http_port 5000
+visible_hostname jualbelikapal.e10.com
+
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
+auth_param basic children 5
+auth_param basic realm Proxy
+auth_param basic credentialsttl 2 hours
+auth_param basic casesensitive on
+acl USERS proxy_auth REQUIRED
+http_access allow USERS
+```
+### Testing
+`lynx http://its.ac.id`
+
+![image](https://user-images.githubusercontent.com/77628684/141644565-9269aa27-d6b6-4b4f-a554-98411911f1b7.png)
+
+
+## Soal 10
+Transaksi jual beli tidak dilakukan setiap hari, oleh karena itu akses internet dibatasi hanya dapat diakses setiap hari Senin-Kamis pukul 07.00-11.00 dan setiap hari Selasa-Jum’at pukul 17.00-03.00 keesokan harinya (sampai Sabtu pukul 03.00)
+
+```bash
+# /etc/squid/acl.conf
+
+acl AVAILABLE_WORKING_1 time MTWH 07:00-11:00
+acl AVAILABLE_WORKING_2 time TWHF 17:00-24:00
+acl AVAILABLE_WORKING_3 time WHFA 00:00-03:00
+
+```
+
+Tambahkan perintah pada etc/squid/squid.conf
+
+```bash
+include /etc/squid/acl.conf
+
+http_port 5000
+visible_hostname jualbelikapal.e10.com
+
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
+auth_param basic children 5
+auth_param basic realm Proxy
+auth_param basic credentialsttl 2 hours
+auth_param basic casesensitive on
+acl USERS proxy_auth REQUIRED
+http_access allow USERS AVAILABLE_WORKING_1
+http_access allow USERS AVAILABLE_WORKING_2
+http_access allow USERS AVAILABLE_WORKING_3
+```
+
+## Soal 11
+Agar transaksi bisa lebih fokus berjalan, maka dilakukan redirect website agar mudah mengingat website transaksi jual beli kapal. Setiap mengakses google.com, akan diredirect menuju super.franky.yyy.com dengan website yang sama pada soal shift modul 2. Web server super.franky.yyy.com berada pada node Skypie  
+
+Pada EniesLobby, lakukan config DNS
+
+```bash
+# /etc/bind/named.conf.local
+
+zone "super.franky.e10.com" {
+    type master;
+    file "/etc/bind/kaizoku/super.franky.e10.com";
+    allow-transfer { 10.34.3.69; }; // Masukan IP Skypie tanpa tanda petik
+};
+```
+
+```bash
+# /etc/bind/kaizoku/super.franky.e10.com
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     super.franky.e10.com. root.super.franky.e10.com. (
+                        2021110801      ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      super.franky.e10.com.
+@       IN      A       10.34.3.69
+www     IN      CNAME   super.franky.e10.com.
+```
+
+Lalu tambahkan file html ke /var/www/super.franky.e10.com pada **Skypie**
+
+```bash
+# /etc/apache2/apache2.conf
+...
+
+ServerName 10.34.3.69
+```
+
+```bash
+# /etc/apache2/sites-available/super.franky.e10.com.conf
+<VirtualHost *:80>
+    ServerName super.franky.e10.com
+    ServerAlias www.super.franky.e10.com
+
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/super.franky.e10.com
+
+    <Directory /var/www/super.franky.e10.com>
+        Options +Indexes
+        AllowOverride All
+    </Directory>
+
+    <Directory /var/www/super.franky.e10.com/public>
+        Options +Indexes
+    </Directory>
+
+    Alias "/js" "/var/www/super.franky.e10.com/public/js"
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+    ErrorDocument 404 /error/404.html
+</VirtualHost>
+```
+
+Setelah selesai melakukan config untuk DNS dan apache, maka kita bisa melakukan pengujian untuk super franky
+
+`lynx http://super.franky.e10.com`
+
+![superFranky_lynx](https://user-images.githubusercontent.com/68275535/141614883-4ec6ab6b-d332-433e-b804-b7def2c2d3d3.jpg)
+
+Lalu untuk redirect google.com
+
+```bash
+http_port 5000
+visible_hostname jualbelikapal.e10.com
+
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
+auth_param basic children 5
+auth_param basic realm Proxy
+auth_param basic credentialsttl 2 hours
+auth_param basic casesensitive on
+acl USERS proxy_auth REQUIREDqqq
+http_access allow USERS AVAILABLE_WORKING_1
+http_access allow USERS AVAILABLE_WORKING_2
+http_access allow USERS AVAILABLE_WORKING_3
+
+acl BLACKLIST dstdomain google.com
+deny_info http://super.franky.e10.com/ BLACKLIST
+http_reply_access deny BLACKLIST
+```
+
+Water7 → jangan lupa ganti nameserver ke enieslobby
+
+`lynx google.com`
+
+![lynx_googleToFranky](https://user-images.githubusercontent.com/68275535/141614902-8a8103c9-418a-4239-b4aa-c4d07c1cb7d1.jpg)
 
 ## Soal 12
 
