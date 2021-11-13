@@ -159,6 +159,41 @@ default-lease-time 720;
 max-lease-time 7200;
 ```
 
+## Soal 7
+
+### Soal
+Luffy dan Zoro berencana menjadikan Skypie sebagai server untuk jual beli kapal yang dimilikinya dengan alamat IP yang tetap dengan IP [prefix IP].3.69
+
+### Jawaban
+
+Pertama, dapatkan hwaddress Skypie (`6a:41:b2:2c:ae:8b`)
+
+![hwAddress_DHCP](https://user-images.githubusercontent.com/68275535/141614807-7a7f99c5-bf96-43e7-95e8-ab50ae6f79fc.jpg)
+
+Kemudian config pada Jipangu, dhcpd.conf
+
+```bash
+#fixed address Skypie
+host Skypie{
+    hardware ethernet 6a:41:b2:2c:ae:8b;
+    fixed-address 10.34.3.69;
+}
+```
+
+Konfigurasi interface Skypie
+
+```bash
+auto eth0
+iface eth0 inet dhcp
+hwaddress ether 6a:41:b2:2c:ae:8b
+```
+
+![Interface_Skypie](https://user-images.githubusercontent.com/68275535/141614824-2806ccf1-2789-48e4-b0b2-d93979802a2c.jpg)
+
+Test IP Static
+
+![StaticIP_Skypie](https://user-images.githubusercontent.com/68275535/141614841-10ddac58-2aa7-45cf-a161-40645c060234.jpg)
+
 ## Soal 8
 
 ### Soal
